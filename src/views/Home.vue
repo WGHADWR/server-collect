@@ -1,8 +1,15 @@
 <template>
   <div class="home">
+    <div class="tool-bar">
+      <button v-if="!!websocket" @click="closeSocket">Disconnect</button>
+      <button v-if="!websocket" @click="connect">Connect</button>
+    </div>
+    <div class="item-header"><h1>Server Status</h1></div>
     <div class="container-charts">
       <div id="chart-cpu-usage" class="chart-timeline"></div>
       <div id="chart-mem-usage" class="chart-timeline"></div>
+      <div class="item-header"><h3>Processes</h3></div>
+      <Process />
     </div>
   </div>
 </template>
@@ -12,21 +19,32 @@ import { Component, Vue } from 'vue-property-decorator';
 import echarts from 'echarts';
 
 import HelloWorld from '@/components/HelloWorld.vue'; // @ is an alias to /src
+import Process from '@/components/Process.vue';
+import { AppConfig } from '@/config/AppConfig';
 
 @Component({
   components: {
     HelloWorld,
+    Process,
   },
 })
 export default class Home extends Vue {
 
-  private socket: any;
+  private socket: any = null;
   private chartCpuUsage: any;
   private chartMemUsage: any;
   private timelineOptions: any = {
     title: '',
     seriesName: '',
   };
+
+  get websocket() {
+    return this.socket;
+  }
+
+  set websocket(socket) {
+    this.socket = socket;
+  }
 
   public mounted() {
     this.chartCpuUsage = this.createTimelineChart('chart-cpu-usage', { title: 'CPU Usage', seriesName: 'CPU' });
@@ -42,11 +60,10 @@ export default class Home extends Vue {
   }
 
   private connect() {
-    this.socket = new WebSocket('ws://192.168.169.2:8000/ws/server/status');
+    this.websocket = new WebSocket(AppConfig.WebSocketURL + '/ws/server/status');
     this.socket.onopen = (ev: any) => {
       // socket.send(JSON.stringify({'connect: ': (new Date()).getTime()}));
       this.socket.send(JSON.stringify({action: 'GetStatus', items: ['CPU', 'MEM']}));
-      // socket.send(JSON.stringify({action: 'GetMemUsage'}));
     };
     this.socket.onmessage = (ev: any) => {
       // console.log('Recive message:');
@@ -73,6 +90,14 @@ export default class Home extends Vue {
     }
   }
 
+  private closeSocket(): void {
+    if (this.socket) {
+      console.log('Close socket connect.');
+      this.socket.close();
+      this.socket = undefined;
+    }
+  }
+
   private addCpuUsageChartData(data: any) {
     const value: any = data.value;
     data = { ...data, value: Math.round(value) };
@@ -87,12 +112,14 @@ export default class Home extends Vue {
 
   private createTimelineChart(el: string, options: any = {}) {
     const settings = { ...this.timelineOptions, ...options };
-    const option = {
+    const option: any = {
       title: {
         text: settings.title,
         textStyle: {
           color: '#AAA',
+          fontSize: 14,
         },
+        top: 10,
       },
       backgroundColor: '#2c343c',
       textStyle: {
@@ -110,6 +137,7 @@ export default class Home extends Vue {
         },
       },
       grid: {
+        top: 50,
         left: 35,
         right: 30,
         bottom: 35,
@@ -206,10 +234,30 @@ export default class Home extends Vue {
 }
 </script>
 <style lang="scss" scoped>
+.home {
+  position: relative;
+
+  .item-header {
+    color: #AEAEAE;
+  }
+}
 .container-charts {
   .chart-timeline {
     height: 240px;
     margin: 0 0 15px 0;
+  }
+}
+.tool-bar {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 10;
+
+  button {
+    padding: 5px 7px;
+    border: 0;
+    background: #34495E;
+    color: #aaa;
   }
 }
 </style>
