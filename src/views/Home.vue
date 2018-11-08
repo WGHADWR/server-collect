@@ -1,15 +1,40 @@
 <template>
-  <div class="home">
-    <div class="tool-bar">
-      <button v-if="!!websocket" @click="closeSocket">Disconnect</button>
-      <button v-if="!websocket" @click="connect">Connect</button>
-    </div>
+  <div class="home container-fluid">
     <div class="item-header"><h1>Server Status</h1></div>
     <div class="container-charts">
-      <div id="chart-cpu-usage" class="chart-timeline"></div>
-      <div id="chart-mem-usage" class="chart-timeline"></div>
-      <div class="item-header"><h3>Processes</h3></div>
-      <Process />
+      <div class="row">
+        <div class="col-12">
+          <div class="item-header"><h3 class="item-title">Resource Usage</h3>
+            <div class="item-header-plot">
+              <button v-if="!!websocket" class="btn" @click="closeSocket">Disconnect</button>
+              <button v-if="!websocket" class="btn" @click="connect">Connect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-4">
+          <div class="chart-timeline"><div id="chart-cpu-usage" class="chart-container"></div></div>
+        </div>
+        <div class="col-4">
+          <div class="chart-timeline"><div id="chart-mem-usage" class="chart-container"></div></div>
+        </div>
+        <div class="col-4"><ServerInfo v-bind:data="serverInfo" class="item-serverinfo" /></div>
+      </div>
+      <div class="row">
+        <div class="col-12">
+          <div class="item-header"><h3 class="item-title">Processes</h3>
+            <div class="item-header-plot">
+              <button class="btn" @click="refreshProces">Refresh</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12">
+          <Process ref="process" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -20,12 +45,15 @@ import echarts from 'echarts';
 
 import HelloWorld from '@/components/HelloWorld.vue'; // @ is an alias to /src
 import Process from '@/components/Process.vue';
+import ServerInfo from '@/components/ServerInfo.vue';
+
 import { AppConfig } from '@/config/AppConfig';
 
 @Component({
   components: {
     HelloWorld,
     Process,
+    ServerInfo,
   },
 })
 export default class Home extends Vue {
@@ -38,6 +66,8 @@ export default class Home extends Vue {
     seriesName: '',
   };
 
+  private serverInfo: any = {};
+
   get websocket() {
     return this.socket;
   }
@@ -47,6 +77,7 @@ export default class Home extends Vue {
   }
 
   public mounted() {
+    window.onresize = () => this.resize();
     this.chartCpuUsage = this.createTimelineChart('chart-cpu-usage', { title: 'CPU Usage', seriesName: 'CPU' });
     this.chartMemUsage = this.createTimelineChart('chart-mem-usage', { title: 'MEM Usage', seriesName: 'MEM' });
     this.connect();
@@ -56,6 +87,16 @@ export default class Home extends Vue {
     if (this.socket) {
       console.log('Close websocket connect.');
       this.socket.close();
+    }
+    window.onresize = null;
+  }
+
+  private resize() {
+    if (this.chartCpuUsage) {
+      this.chartCpuUsage.resize();
+    }
+    if (this.chartMemUsage) {
+      this.chartMemUsage.resize();
     }
   }
 
@@ -77,11 +118,18 @@ export default class Home extends Vue {
     };
     this.socket.onerror = (ev: any) => {
       console.log(ev);
+      this.socket = null;
     };
   }
 
   private onMessageHandler(message: any) {
     const { CPU, MEM } = message;
+    // this.serverInfo = {
+    //   mem: MEM,
+    // };
+    if (MEM) {
+      this.$set(this.serverInfo, 'mem', MEM.value);
+    }
     if (CPU && this.chartCpuUsage) {
       this.addCpuUsageChartData(CPU);
     }
@@ -98,6 +146,10 @@ export default class Home extends Vue {
     }
   }
 
+  private refreshProces() {
+    (this.$refs.process as any).refresh();
+  }
+
   private addCpuUsageChartData(data: any) {
     const value: any = data.value;
     data = { ...data, value: Math.round(value) };
@@ -105,7 +157,7 @@ export default class Home extends Vue {
   }
 
   private addMemUsageChartData(data: any) {
-    const value = Math.round(data.value[2]);
+    const value = Math.round(data.value.percent);
     data = { ...data, value };
     this.addTimelineChartData(this.chartMemUsage, data);
   }
@@ -238,26 +290,38 @@ export default class Home extends Vue {
   position: relative;
 
   .item-header {
+    position: relative;
     color: #AEAEAE;
+    .item-title {
+      margin: 0.5rem 0;
+    }
+
+    .item-header-plot {
+      position: absolute;
+      top: 3px;
+      right: 0px;
+    }
+  }
+
+  .item-serverinfo {
+    background: #2c343c;
+  }
+  .btn {
+    padding: 5px 7px;
+    border: 0;
+    background: #34495E;
+    color: #aaa;
   }
 }
 .container-charts {
   .chart-timeline {
     height: 240px;
-    margin: 0 0 15px 0;
-  }
-}
-.tool-bar {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 10;
+    overflow: hidden;
 
-  button {
-    padding: 5px 7px;
-    border: 0;
-    background: #34495E;
-    color: #aaa;
+    .chart-container {
+      width: 100%;
+      height: 100%;
+    }
   }
 }
 </style>

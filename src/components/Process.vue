@@ -23,14 +23,19 @@
   </div>
 </template>
 <script lang="ts">
-import { Vue, Component } from 'vue-property-decorator';
+import { Vue, Component, Prop } from 'vue-property-decorator';
 import { AppConfig } from '@/config/AppConfig';
 
 @Component
 export default class Process extends Vue {
+
   private dataList: any[] = [];
 
   public mounted() {
+    this.renderProcess();
+  }
+
+  public refresh(): void {
     this.renderProcess();
   }
 
