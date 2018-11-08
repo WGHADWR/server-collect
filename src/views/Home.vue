@@ -13,13 +13,19 @@
         </div>
       </div>
       <div class="row">
-        <div class="col-4">
-          <div class="chart-timeline"><div id="chart-cpu-usage" class="chart-container"></div></div>
+        <div class="col-3">
+          <div class="chart-timeline item-container"><div id="chart-cpu-usage" class="chart-container"></div></div>
         </div>
-        <div class="col-4">
-          <div class="chart-timeline"><div id="chart-mem-usage" class="chart-container"></div></div>
+        <div class="col-3">
+          <div class="chart-timeline item-container"><div id="chart-mem-usage" class="chart-container"></div></div>
         </div>
-        <div class="col-4"><ServerInfo v-bind:data="serverInfo" class="item-serverinfo" /></div>
+        <div class="col-3"><ServerInfo v-bind:data="serverInfo" class="item-serverinfo item-container" /></div>
+        <div class="col-3">
+          <div class="item-container item-serverinfo">
+            <div class="item-wrapper">
+              <DiskPartition v-bind:data="serverInfo['disk_info']" class="item-partitions" /></div>
+            </div>
+          </div>
       </div>
       <div class="row">
         <div class="col-12">
@@ -44,16 +50,19 @@ import { Component, Vue } from 'vue-property-decorator';
 import echarts from 'echarts';
 
 import HelloWorld from '@/components/HelloWorld.vue'; // @ is an alias to /src
-import Process from '@/components/Process.vue';
-import ServerInfo from '@/components/ServerInfo.vue';
+import Process from '@/components/serverInfo/Process.vue';
+import ServerInfo from '@/components/serverInfo/ServerInfo.vue';
+import DiskPartition from '@/components/serverInfo/DiskPartition.vue';
 
 import { AppConfig } from '@/config/AppConfig';
+import { ServerInfoService } from '@/services/ServerInfoService';
 
 @Component({
   components: {
     HelloWorld,
     Process,
     ServerInfo,
+    DiskPartition,
   },
 })
 export default class Home extends Vue {
@@ -76,11 +85,17 @@ export default class Home extends Vue {
     this.socket = socket;
   }
 
+  get disks() {
+    return [];
+  }
+
   public mounted() {
     window.onresize = () => this.resize();
     this.chartCpuUsage = this.createTimelineChart('chart-cpu-usage', { title: 'CPU Usage', seriesName: 'CPU' });
     this.chartMemUsage = this.createTimelineChart('chart-mem-usage', { title: 'MEM Usage', seriesName: 'MEM' });
     this.connect();
+
+    this.getServerInfo();
   }
 
   public beforeDestroy() {
@@ -148,6 +163,10 @@ export default class Home extends Vue {
 
   private refreshProces() {
     (this.$refs.process as any).refresh();
+  }
+
+  private async getServerInfo() {
+    this.serverInfo = await ServerInfoService.getServerInfo();
   }
 
   private addCpuUsageChartData(data: any) {
@@ -289,6 +308,11 @@ export default class Home extends Vue {
 .home {
   position: relative;
 
+  .item-container {
+    height: 240px;
+    overflow: hidden;
+  }
+
   .item-header {
     position: relative;
     color: #AEAEAE;
@@ -303,8 +327,13 @@ export default class Home extends Vue {
     }
   }
 
+  .item-wrapper {
+    padding: 10px;
+  }
+
   .item-serverinfo {
     background: #2c343c;
+    color: #aaa;
   }
   .btn {
     padding: 5px 7px;
@@ -315,13 +344,17 @@ export default class Home extends Vue {
 }
 .container-charts {
   .chart-timeline {
-    height: 240px;
-    overflow: hidden;
-
     .chart-container {
       width: 100%;
       height: 100%;
     }
+  }
+}
+</style>
+<style lang="scss">
+.item-partitions {
+  div {
+    font-size: 12px;
   }
 }
 </style>

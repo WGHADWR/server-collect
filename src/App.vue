@@ -58,7 +58,7 @@ body {
   .row {
     display: block;
   }
-  .col-4 {
+  .col-3 {
     width: 100%;
     margin-bottom: 15px;
   }
